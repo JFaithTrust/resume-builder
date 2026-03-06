@@ -747,7 +747,7 @@ export function ResumeForm({ value, onChange }: ResumeFormProps) {
             2–4 sentences about your experience and goals.
           </p>
         </div>
-        <div className="relative">
+        <div className="relative text-slate-600">
           <textarea
             value={value.summary}
             onChange={(e) => handleSummaryChange(e.target.value)}
@@ -756,7 +756,7 @@ export function ResumeForm({ value, onChange }: ResumeFormProps) {
             placeholder="Results-driven engineer with X years of experience building... Passionate about..."
             aria-label="Professional summary"
           />
-          <span className="block text-right text-[11px] text-slate-400 mt-1">
+          <span className="block text-right text-[11px] mt-1">
             {value.summary?.length ?? 0} characters
           </span>
         </div>
