@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { Download, Minus, Plus, RotateCcw } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -14,6 +14,14 @@ const cloneDefaultResume = (): IResume =>
   JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA)) as IResume;
 
 export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f4f5f7]" />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const [resumeData, setResumeData] = useState<IResume>(cloneDefaultResume);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -90,13 +98,14 @@ export default function Home() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "Javohir_Mirzaakbarov_Resume.pdf";
+      const fileName = `${resumeData.profile.name.replace(/\s+/g, "_")}_Resume.pdf`;
+      link.download = fileName;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("PDF download failed", error);
       alert(
-        "PDF ni yaratishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring."
+        "Failed to generate PDF. Please try again."
       );
     } finally {
       setIsGeneratingPdf(false);

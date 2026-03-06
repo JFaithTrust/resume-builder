@@ -40,7 +40,7 @@ export interface ISkill {
   list: string[];
 }
 
-export interface IFirlanceProject {
+export interface IFreelanceProject {
   name: string;
   link?: string;
   githubLink?: string;
@@ -53,5 +53,5 @@ export interface IResume {
   workExperience: IWorkExperience[];
   education: IEducation[];
   skills: ISkill[];
-  firlance_projects: IFirlanceProject[];
+  freelance_projects: IFreelanceProject[];
 }

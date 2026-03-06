@@ -3,6 +3,7 @@
 import { Earth, Github, Linkedin, Mail, Phone } from "lucide-react";
 
 import { IResume } from "@/types/resume";
+import { isValidUrl } from "@/lib/utils";
 
 interface ResumePreviewProps {
   resume: IResume;
@@ -22,9 +23,9 @@ export function ResumePreview({
   scale = 1,
 }: ResumePreviewProps) {
   const resumeWrapperClass = [
-    "resume-wrapper w-[210mm] min-h-[297mm] bg-white",
-    isPdfRender ? "m-0 shadow-none" : "m-auto shadow-[0_0_10px_rgba(0,0,0,0.15)]",
-    "print:m-0 print:w-full print:min-h-0 print:shadow-none",
+    "resume-wrapper w-[210mm] bg-white",
+    isPdfRender ? "m-0 shadow-none" : "m-auto min-h-[297mm] shadow-[0_0_10px_rgba(0,0,0,0.15)]",
+    "print:m-0 print:w-full print:shadow-none",
   ].join(" ");
 
   const scaledStyle = isPdfRender
@@ -45,7 +46,7 @@ export function ResumePreview({
             disabled={isGeneratingPdf}
             className="mt-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isGeneratingPdf ? "Yuklanmoqda..." : "PDF sifatida yuklab olish"}
+            {isGeneratingPdf ? "Generating..." : "Download as PDF"}
           </button>
         </div>
       )}
@@ -60,26 +61,33 @@ export function ResumePreview({
               {resume.profile.title}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] font-medium text-slate-700">
-              {resume.profile.contact.map((contact) => (
-                <div className="flex items-center gap-x-1" key={`${contact.type}-${contact.title}`}>
-                  {contact.type === "email" ? (
-                    <Mail className="size-3 text-slate-500" />
-                  ) : contact.type === "phone" ? (
-                    <Phone className="size-3 text-slate-500" />
-                  ) : contact.type === "linkedin" ? (
-                    <Linkedin className="size-3 text-slate-500" />
-                  ) : contact.type === "github" ? (
-                    <Github className="size-2.5 text-slate-500" />
-                  ) : (
-                    <Earth className="size-2.5 text-slate-500" />
-                  )}
-                  <span>
-                    <a href={contact.link} className="hover:underline">
-                      {contact.title}
-                    </a>
-                  </span>
-                </div>
-              ))}
+              {resume.profile.contact.map((contact) => {
+                const isValidLink = isValidUrl(contact.link);
+                return (
+                  <div className="flex items-center gap-x-1" key={`${contact.type}-${contact.title}`}>
+                    {contact.type === "email" ? (
+                      <Mail className="size-3 text-slate-500" />
+                    ) : contact.type === "phone" ? (
+                      <Phone className="size-3 text-slate-500" />
+                    ) : contact.type === "linkedin" ? (
+                      <Linkedin className="size-3 text-slate-500" />
+                    ) : contact.type === "github" ? (
+                      <Github className="size-2.5 text-slate-500" />
+                    ) : (
+                      <Earth className="size-2.5 text-slate-500" />
+                    )}
+                    <span>
+                      {isValidLink ? (
+                        <a href={contact.link} className="hover:underline">
+                          {contact.title}
+                        </a>
+                      ) : (
+                        <span>{contact.title}</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </header>
 
@@ -104,7 +112,7 @@ export function ResumePreview({
                 >
                   <div className="flex flex-wrap justify-between gap-y-1 text-[11px] font-semibold text-slate-900">
                     <div className="flex flex-col">
-                      {exp.companyLink ? (
+                      {exp.companyLink && isValidUrl(exp.companyLink) ? (
                         <a
                           href={exp.companyLink}
                           target="_blank"
@@ -134,18 +142,36 @@ export function ResumePreview({
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
+                  {exp.key_projects && exp.key_projects.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-slate-800">Key Projects:</p>
+                      <ul className="list-disc space-y-0.5 pl-5 text-[10px] text-slate-700">
+                        {exp.key_projects.map((project, idx) => (
+                          <li key={idx}>
+                            {project.link && isValidUrl(project.link) ? (
+                              <a href={project.link} target="_blank" rel="noreferrer" className="hover:underline text-[#114A8A]">
+                                {project.name}
+                              </a>
+                            ) : (
+                              <span>{project.name}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </article>
               ))}
             </div>
           </section>
 
-          {resume.firlance_projects.length > 0 && (
+          {resume.freelance_projects?.length > 0 && (
             <section className="resume-section mt-6">
               <h2 className="border-b border-slate-200 pb-1 text-[13px] font-bold uppercase tracking-[0.25em] text-slate-800">
-                Freelance and Own Projects
+                Client & Independent Projects
               </h2>
               <div className="mt-3 space-y-3">
-                {resume.firlance_projects.map((project) => (
+                {resume.freelance_projects.map((project) => (
                   <article
                     key={project.name}
                     className="space-y-1 print:break-inside-avoid"
@@ -157,7 +183,7 @@ export function ResumePreview({
                         </span>
                       </div>
                       <div className="flex gap-3 text-[11px] font-medium text-slate-600">
-                        {project.link && (
+                        {project.link && isValidUrl(project.link) && (
                           <a
                             href={project.link}
                             target="_blank"
@@ -167,7 +193,7 @@ export function ResumePreview({
                             Live
                           </a>
                         )}
-                        {project.githubLink && (
+                        {project.githubLink && isValidUrl(project.githubLink) && (
                           <a
                             href={project.githubLink}
                             target="_blank"

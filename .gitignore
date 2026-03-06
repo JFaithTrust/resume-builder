@@ -17,6 +17,17 @@
 /.next/
 /out/
 
+# agents
+/.claude
+/.cursor
+/.junie
+/.windsurf
+/.agent
+/.agents
+
+# local data / scratch files
+/const/
+
 # production
 /build
 
