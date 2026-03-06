@@ -1,65 +1,201 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { Download, Minus, Plus, RotateCcw } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+
+import { ResumeForm } from "@/components/resume-form";
+import { ResumePreview } from "@/components/resume-preview";
+import { RESUME_STORAGE_KEY } from "@/lib/constants";
+import { DEFAULT_RESUME_DATA } from "@/lib/default-resume";
+import { IResume } from "@/types/resume";
+
+const cloneDefaultResume = (): IResume =>
+  JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA)) as IResume;
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <Suspense fallback={<div className="min-h-screen bg-[#f4f5f7]" />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
+  const [resumeData, setResumeData] = useState<IResume>(cloneDefaultResume);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const [previewScale, setPreviewScale] = useState(0.9);
+
+  const searchParams = useSearchParams();
+  const isPdfRender = useMemo(
+    () => searchParams.get("pdf") === "1",
+    [searchParams],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const stored = window.localStorage.getItem(RESUME_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as IResume;
+        setResumeData(parsed);
+      }
+    } catch (error) {
+      console.error("Failed to read resume data", error);
+    } finally {
+      setHasHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydrated || typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(resumeData));
+    } catch (error) {
+      console.error("Failed to persist resume data", error);
+    }
+  }, [resumeData, hasHydrated]);
+
+  const handleResumeChange = useCallback((updater: (prev: IResume) => IResume) => {
+    setResumeData((prev) => updater(prev));
+  }, []);
+
+  const clampScale = useCallback((next: number) => {
+    const clamped = Math.min(1.6, Math.max(0.5, next));
+    return parseFloat(clamped.toFixed(2));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setPreviewScale((prev) => clampScale(prev - 0.1));
+  }, [clampScale]);
+
+  const zoomIn = useCallback(() => {
+    setPreviewScale((prev) => clampScale(prev + 0.1));
+  }, [clampScale]);
+
+  const zoomReset = useCallback(() => {
+    setPreviewScale(1);
+  }, []);
+
+  const handleDownload = useCallback(async () => {
+    try {
+      setIsGeneratingPdf(true);
+      const response = await fetch("/api/resume-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origin: window.location.origin, resume: resumeData }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = `${resumeData.profile.name.replace(/\s+/g, "_")}_Resume.pdf`;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF download failed", error);
+      alert(
+        "Failed to generate PDF. Please try again."
+      );
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }, [resumeData]);
+
+  if (isPdfRender) {
+    return (
+      <div className="bg-white">
+        <ResumePreview
+          resume={resumeData}
+          onDownload={() => {}}
+          isGeneratingPdf={false}
+          isPdfRender
+          showDownloadButton={false}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f4f5f7]">
+      <div className="flex min-h-screen flex-col lg:flex-row">
+        <aside className="hidden w-full max-w-105 border-r border-slate-200 bg-white shadow-sm lg:block">
+          <div className="sticky top-0 h-screen overflow-y-auto px-5 py-6">
+            <ResumeForm value={resumeData} onChange={handleResumeChange} />
+          </div>
+        </aside>
+
+        <main className="relative flex-1 overflow-hidden">
+          <div className="lg:hidden px-4 pb-4 pt-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <ResumeForm value={resumeData} onChange={handleResumeChange} />
+            </div>
+          </div>
+
+          <div className="absolute left-5 top-28 z-20 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur">
+            <button
+              type="button"
+              onClick={zoomOut}
+              className="flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100"
+              aria-label="Zoom out"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <Minus className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={zoomReset}
+              className="flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100"
+              aria-label="Reset zoom"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              <RotateCcw className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={zoomIn}
+              className="flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100"
+              aria-label="Zoom in"
+            >
+              <Plus className="size-4" />
+            </button>
+            <div className="mx-1 h-px bg-slate-200" />
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={isGeneratingPdf}
+              className="flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Download PDF"
+            >
+              <Download className="size-4" />
+            </button>
+            <div className="text-center text-[11px] font-medium text-slate-500">
+              {Math.round(previewScale * 100)}%
+            </div>
+          </div>
+
+          <div className="flex h-full flex-col items-center overflow-auto px-4 py-10 lg:px-12">
+            <div className="w-full max-w-[240mm]">
+              <ResumePreview
+                resume={resumeData}
+                onDownload={handleDownload}
+                isGeneratingPdf={isGeneratingPdf}
+                isPdfRender={false}
+                showDownloadButton={false}
+                scale={previewScale}
+              />
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
