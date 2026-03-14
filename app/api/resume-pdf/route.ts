@@ -28,10 +28,12 @@ export async function POST(request: Request) {
     const resumePayload = resume ?? DEFAULT_RESUME_DATA;
     const serializedResume = JSON.stringify(resumePayload);
 
+    const executablePath = await puppeteer.executablePath();
+
     browser = await puppeteer.launch({
       headless: true,
       args: DEFAULT_ARGS,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+      executablePath,
     });
 
     const page = await browser.newPage();
