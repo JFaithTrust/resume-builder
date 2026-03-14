@@ -6,6 +6,7 @@ import { DEFAULT_RESUME_DATA } from "@/lib/default-resume";
 import { IResume } from "@/types/resume";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const A4_WIDTH_MM = 210;
 
