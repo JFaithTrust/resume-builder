@@ -81,12 +81,10 @@ function HomeContent() {
     setPreviewScale(1);
   }, []);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
-
   const handleDownload = useCallback(async () => {
     try {
       setIsGeneratingPdf(true);
-      const response = await fetch(`${API_URL}/resume-pdf`, {
+      const response = await fetch(`api/resume-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origin: window.location.origin, resume: resumeData }),
