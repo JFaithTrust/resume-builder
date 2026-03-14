@@ -1,4 +1,5 @@
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 import { RESUME_STORAGE_KEY } from "@/lib/constants";
 import { DEFAULT_RESUME_DATA } from "@/lib/default-resume";
@@ -6,7 +7,6 @@ import { IResume } from "@/types/resume";
 
 export const runtime = "nodejs";
 
-const DEFAULT_ARGS = ["--no-sandbox", "--disable-setuid-sandbox"];
 const A4_WIDTH_MM = 210;
 
 export async function POST(request: Request) {
@@ -28,12 +28,11 @@ export async function POST(request: Request) {
     const resumePayload = resume ?? DEFAULT_RESUME_DATA;
     const serializedResume = JSON.stringify(resumePayload);
 
-    const executablePath = await puppeteer.executablePath();
-
     browser = await puppeteer.launch({
-      headless: true,
-      args: DEFAULT_ARGS,
-      executablePath,
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
