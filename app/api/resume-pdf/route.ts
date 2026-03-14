@@ -29,14 +29,25 @@ export async function POST(request: Request) {
     const resumePayload = resume ?? DEFAULT_RESUME_DATA;
     const serializedResume = JSON.stringify(resumePayload);
 
+    const isLocal = process.platform === "darwin" || process.platform === "win32";
+    const executablePath = isLocal
+      ? process.platform === "darwin"
+        ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        : "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+      : await chromium.executablePath();
+
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: isLocal ? ["--no-sandbox", "--disable-setuid-sandbox"] : chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      executablePath,
+      headless: true,
     });
 
     const page = await browser.newPage();
+
+    // Set viewport to A4 width at 96 DPI so layout matches PDF output
+    await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 1 });
+
     await page.evaluateOnNewDocument(
       (storageKey, resumeString) => {
         try {
@@ -49,11 +60,17 @@ export async function POST(request: Request) {
       serializedResume,
     );
 
-    await page.emulateMediaType("print");
+    // Use screen media to avoid CSS print page-break rules splitting the output
+    await page.emulateMediaType("screen");
     const targetUrl = `${origin}?pdf=1`;
 
     await page.goto(targetUrl, { waitUntil: "networkidle0" });
     await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Force no page breaks so entire resume renders as one continuous page
+    await page.addStyleTag({
+      content: "* { break-inside: auto !important; break-before: auto !important; break-after: auto !important; page-break-inside: auto !important; page-break-before: auto !important; page-break-after: auto !important; }",
+    });
 
     // Get actual content height
     const contentHeightPx = await page.evaluate(() => {
